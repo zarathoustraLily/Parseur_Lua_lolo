@@ -399,17 +399,22 @@ const champNomExport = $("export-nom");
 let repondreExport = null;
 
 const RESERVES = '\\/:*?"<>|';
+const FORMATS = {
+  json: { extension: ".json", type: "application/json", description: "Fichier JSON" },
+  html: { extension: ".html", type: "text/html", description: "Page HTML" },
+};
+let formatExport = FORMATS.json;      // le format de l'export en cours
 
 /** Un nom de fichier valable partout : sans chemin ni caractère réservé, avec une extension. */
 function nomDeFichier(saisie) {
   let nom = [...saisie].filter((c) => c >= " " && !RESERVES.includes(c)).join("").trim();
   while (nom.endsWith(".") || nom.endsWith(" ")) nom = nom.slice(0, -1);
   if (!nom) return "";
-  return /\.[A-Za-z0-9]{1,8}$/.test(nom) ? nom : `${nom}.json`;
+  return /\.[A-Za-z0-9]{1,8}$/.test(nom) ? nom : `${nom}${formatExport.extension}`;
 }
 
 function telecharger(texte, nom) {
-  const adresse = URL.createObjectURL(new Blob([texte], { type: "application/json" }));
+  const adresse = URL.createObjectURL(new Blob([texte], { type: formatExport.type }));
   const lien = document.createElement("a");
   lien.href = adresse;
   lien.download = nom;
@@ -427,7 +432,7 @@ async function choisirDestination(propose) {
       id: "lua-studio-export",          // le navigateur rouvre la fenêtre dans le dernier dossier choisi
       startIn: "documents",
       suggestedName: propose,
-      types: [{ description: "Fichier JSON", accept: { "application/json": [".json"] } }],
+      types: [{ description: formatExport.description, accept: { [formatExport.type]: [formatExport.extension] } }],
     });
   } catch (erreur) {
     if (erreur.name === "AbortError") return null;
@@ -456,7 +461,7 @@ function demanderNom(propose) {
   dialogueExport.showModal();
   champNomExport.focus();
   // Le nom est sélectionné sans ses extensions : taper le remplace et garde « .ast.json ».
-  champNomExport.setSelectionRange(0, propose.replace(/(\.[a-z]+)?\.json$/i, "").length);
+  champNomExport.setSelectionRange(0, propose.replace(/(\.[a-z]+)?\.(json|html)$/i, "").length);
   return new Promise((resoudre) => {
     repondreExport = resoudre;
   });
@@ -488,13 +493,16 @@ async function exporter(genre) {
     return;
   }
   const jetons = genre === "jetons";
+  const decisions = genre === "decisions";
   // Vérifié avant d'ouvrir la fenêtre : on ne fait pas choisir un fichier pour rien.
   if (jetons ? analyse.jetons === null : !analyse.ok) {
-    annoncer(jetons ? "Aucun jeton à exporter." : "Aucun arbre à exporter : la syntaxe est invalide.");
+    annoncer(jetons ? "Aucun jeton à exporter."
+      : `Aucun ${decisions ? "organigramme" : "arbre"} à exporter : la syntaxe est invalide.`);
     return;
   }
+  formatExport = decisions ? FORMATS.html : FORMATS.json;
   const base = etat.nom.split("/").pop().replace(/\.lua$/i, "") || "script";
-  const propose = `${base}.${jetons ? "tokens" : "ast"}.json`;
+  const propose = decisions ? `${base}.decisions.html` : `${base}.${jetons ? "tokens" : "ast"}.json`;
   let destination = null;
   let demande = !window.showSaveFilePicker;
   if (!demande) {
@@ -506,23 +514,24 @@ async function exporter(genre) {
   }
   if (demande) destination = await demanderNom(propose);
   if (!destination) return;
-  let json;
+  let texte;
   try {
     const reponse = await api("export", {
-      doc: analyse.doc, genre: jetons ? "jetons" : "arbre", compact: genre === "arbre-compact",
+      doc: analyse.doc, genre: decisions ? "decisions" : jetons ? "jetons" : "arbre",
+      compact: genre === "arbre-compact",
     });
-    json = reponse.json;
+    texte = decisions ? reponse.html : reponse.json;
   } catch (erreur) {
     annoncer(erreur.message);
     return;
   }
   try {
-    await destination.ecrire(json);
+    await destination.ecrire(texte);
   } catch (erreur) {
     annoncer(`L'export n'a pas pu être enregistré : ${erreur.message}`);
     return;
   }
-  annoncer(`${destination.nom} enregistré${destination.lieu} (${octets(new Blob([json]).size)}).`);
+  annoncer(`${destination.nom} enregistré${destination.lieu} (${octets(new Blob([texte]).size)}).`);
 }
 
 const menuExporter = $("menu-exporter");

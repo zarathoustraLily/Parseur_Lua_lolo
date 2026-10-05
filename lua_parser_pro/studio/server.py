@@ -20,6 +20,7 @@ from typing import Any
 
 from .. import __version__
 from ..ast import iter_json, to_dict
+from .report import report_page
 from .session import Session, list_folders
 
 DEFAULT_PORT = 8642
@@ -240,6 +241,11 @@ def _export(server: StudioServer, payload: dict[str, Any]) -> dict[str, Any]:
     document = _document(server, payload)
     kind = _text(payload, "genre", "arbre")
     indent = None if payload.get("compact") else 2
+    if kind == "decisions":
+        if document.tree is None:
+            raise StudioError(HTTPStatus.CONFLICT,
+                              "Aucun organigramme à exporter : la syntaxe est invalide.")
+        return {"html": report_page(document)}
     if kind == "jetons":
         if document.tokens is None:
             raise StudioError(HTTPStatus.CONFLICT, "Aucun jeton à exporter.")

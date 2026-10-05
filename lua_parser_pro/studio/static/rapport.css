@@ -1,0 +1,152 @@
+/* Export HTML des décisions : la page autonome que produit report.py.
+   Elle reprend la feuille du Studio (app.css), placée avant celle-ci ; il ne
+   reste ici que sa mise en page, l'arbre, le code et les infobulles. */
+
+.rapport { grid-template-rows: auto minmax(0, 1fr); }
+.lecture { display: grid; grid-template-columns: minmax(230px, 300px) minmax(0, 1fr); min-height: 0; min-width: 0; }
+.sommaire { border-right: 1px solid var(--trait); }
+.sommaire-outils { display: flex; flex-direction: column; gap: 6px; padding: 0 12px 10px; border-bottom: 1px solid var(--trait); }
+.sommaire-outils select.champ { font-size: var(--t-note); }
+.sommaire-liste { flex: 1; overflow: auto; padding: 4px 0 14px; outline: none; }
+.sommaire-liste:focus-visible { outline: 2px solid var(--lune); outline-offset: -2px; }
+.sommaire .vue-note { margin-left: auto; }
+.entree[data-genre="script"] .symbole-genre { color: var(--s-chaine); }
+.entree .symbole-nom b { font-weight: 400; }
+.sans-resultat { padding: 14px 12px; color: var(--encre-3); font-size: var(--t-note); }
+
+/* ------------------------------------------------------------------- fiche */
+.fiche { min-width: 0; }
+.fiche-entete {
+  display: flex; flex-direction: column; gap: 6px; flex: none;
+  padding: 12px 16px 11px; border-bottom: 1px solid var(--trait);
+  max-height: 34vh; overflow: auto;
+}
+.fiche-titre { margin: 0; font: 600 17px/1.3 var(--code); overflow-wrap: anywhere; }
+.fiche-titre i { font-style: normal; font-weight: 400; color: var(--encre-2); }
+.fiche-genre { color: var(--encre-2); font-size: var(--t-note); }
+.fiche-doc { margin: 2px 0 0; white-space: pre-line; max-width: 90ch; }
+.fiche-params { margin: 0; padding: 0; list-style: none; display: grid; gap: 2px; font-size: var(--t-note); color: var(--encre-2); }
+.fiche-params code { font-family: var(--code); color: var(--encre); margin-right: 6px; }
+.fiche-sans-doc { margin: 0; color: var(--encre-3); font-size: var(--t-note); font-style: italic; }
+.relations { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 6px; font-size: var(--t-note); }
+.relations-nom { color: var(--encre-2); margin-right: 2px; }
+.lien-fonction, .n-appel {
+  appearance: none; cursor: pointer;
+  font: var(--t-petit)/1.5 var(--code); padding: 0 6px;
+  border: 1px solid var(--ciel); border-radius: 4px;
+  background: var(--ciel-voile); color: var(--encre);
+}
+.lien-fonction:hover, .n-appel:hover { border-color: var(--encre); }
+.relations .terme { white-space: nowrap; }
+
+.rapport .decisions-resume { flex: none; align-items: flex-start; }
+.fiche .vue-outils { flex: none; }
+.onglets-vue { display: inline-flex; gap: 1px; }
+.bouton-code { margin-left: auto; }
+.fiche-corps { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr); }
+.fiche-corps.avec-code { grid-template-columns: minmax(0, 1fr) minmax(300px, 42%); }
+.fiche-corps > * { min-height: 0; min-width: 0; }
+
+/* ------------------------------------------------------------------- aide */
+.aide { flex: none; padding: 12px 16px; border-bottom: 1px solid var(--trait); background: var(--releve); font-size: var(--t-note); max-height: 40vh; overflow: auto; }
+.aide ul { margin: 8px 0; padding: 0; list-style: none; display: grid; gap: 6px 20px; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); }
+.aide li { display: flex; gap: 9px; align-items: baseline; }
+.aide p { margin: 0; color: var(--encre-2); max-width: 90ch; }
+.aide code { font: var(--t-petit) var(--code); }
+
+/* ------------------------------------------------------------------- arbre */
+.arbre-decisions { overflow: auto; padding: 14px 16px 30px; font-size: var(--t-note); }
+.arbre-decisions ul { list-style: none; margin: 0; padding: 0; }
+.arbre-decisions .n-corps { margin-left: 13px; padding-left: 14px; border-left: 1px solid var(--trait); }
+.arbre-decisions .n-branches { border-left: 2px solid var(--ciel); border-radius: 3px; padding-left: 3px; margin: 3px 0; }
+.n-ligne {
+  display: flex; align-items: baseline; flex-wrap: wrap; gap: 3px 7px;
+  padding: 3px 6px; border-radius: 5px; min-width: 0;
+}
+.n-ligne[data-a] { cursor: pointer; }
+.n-ligne[data-a]:hover { background: var(--releve); }
+.n-ligne.actif { background: var(--lune-voile); box-shadow: inset 2px 0 var(--lune); }
+.n-bascule, .n-espace { width: 16px; height: 16px; flex: none; align-self: center; }
+.n-bascule { appearance: none; border: 0; background: transparent; padding: 0; cursor: pointer; position: relative; border-radius: 3px; }
+.n-bascule::before {
+  content: ""; position: absolute; left: 5px; top: 4px;
+  border: 4px solid transparent; border-left: 6px solid var(--encre-3); border-right: 0;
+  transform-origin: 3px 4px; transition: transform .12s ease;
+}
+.n-bascule[aria-expanded="true"]::before { transform: rotate(90deg); }
+.n-bascule:hover::before { border-left-color: var(--encre); }
+.n-icone { width: 18px; height: 12px; flex: none; align-self: center; overflow: visible; }
+.n-icone .forme { stroke-width: 1.3; }
+.n-mot { color: var(--encre-2); }
+.n-code { font: var(--t-note)/1.5 var(--code); color: var(--encre); white-space: pre-wrap; overflow-wrap: anywhere; min-width: 0; }
+.n-codes { display: flex; flex-direction: column; min-width: 0; flex: 1 1 auto; }
+.n-suite, .n-vide { color: var(--encre-3); font-size: var(--t-petit); }
+.n-vide { padding: 3px 6px 3px 29px; font-style: italic; }
+.n-depart .n-code { font-weight: 600; }
+
+/* -------------------------------------------------------------------- code */
+.code { border-left: 1px solid var(--trait); display: flex; background: var(--panneau); }
+.code-defile { flex: 1; overflow: auto; display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: start; }
+.code-numeros, .code-texte { margin: 0; padding: 10px 12px; font: 12.5px/19px var(--code); tab-size: 4; -moz-tab-size: 4; white-space: pre; }
+.code-numeros {
+  position: sticky; left: 0; z-index: 1; min-height: 100%;
+  text-align: right; color: var(--encre-3); background: var(--panneau);
+  border-right: 1px solid var(--trait); user-select: none;
+}
+.code-zone { position: relative; min-width: 0; }
+.code-texte { color: var(--encre); width: max-content; min-width: 100%; position: relative; }
+.code-marque { position: absolute; left: 0; right: 0; background: var(--lune-voile); box-shadow: inset 2px 0 var(--lune); pointer-events: none; }
+
+/* --------------------------------------------------------------- infobulle */
+.infobulle {
+  position: fixed; left: 0; top: 0; z-index: 60;
+  max-width: min(440px, calc(100vw - 24px)); padding: 10px 12px 9px;
+  background: var(--panneau); color: var(--encre);
+  border: 1px solid var(--trait-fort); border-radius: 8px; box-shadow: var(--ombre);
+  font-size: var(--t-note); line-height: 1.45; pointer-events: none;
+}
+.carte { display: flex; flex-direction: column; gap: 5px; }
+.carte p { margin: 0; }
+.carte-titre { font: 600 13px/1.35 var(--code); overflow-wrap: anywhere; }
+.carte-titre-texte { font-family: var(--texte); }
+.carte-genre { color: var(--encre-3); font-size: var(--t-petit); }
+.carte-doc { white-space: pre-line; max-height: 15em; overflow: hidden; }
+.carte-code {
+  margin: 0; padding: 5px 7px; border-radius: 5px; background: var(--releve);
+  font: var(--t-petit)/1.45 var(--code); white-space: pre-wrap; overflow-wrap: anywhere;
+  max-height: 13em; overflow: hidden;
+}
+.carte-meca, .carte-liste, .carte-rubrique { color: var(--encre-2); }
+.carte-liste code { font: var(--t-petit) var(--code); color: var(--encre); }
+.carte-param code, .carte-appel code { font: 600 var(--t-petit)/1.4 var(--code); color: var(--encre); }
+.carte-param, .carte-appel { color: var(--encre-2); }
+.carte-note, .carte-aide { color: var(--encre-3); font-size: var(--t-petit); font-style: italic; }
+
+.sans-script { margin: 20px; color: var(--erreur); }
+
+/* ------------------------------------------------------------ petits écrans */
+/* La page défile d'un bloc ; le diagramme et le code gardent leur propre défilement. */
+@media (max-width: 860px) {
+  html, body { height: auto; }
+  body { overflow: auto; }
+  .app.rapport, .lecture, .fiche-corps, .fiche-corps.avec-code { display: block; height: auto; }
+  .sommaire { border-right: 0; border-bottom: 1px solid var(--trait); max-height: 42vh; }
+  .sommaire-outils { flex-direction: row; }
+  .sommaire-outils select.champ { width: auto; }
+  .fiche { display: block; overflow: visible; }
+  .fiche-entete { max-height: none; overflow: visible; padding: 10px 12px; }
+  .decisions-toile { height: 78vh; }
+  .arbre-decisions { overflow: visible; padding: 12px 10px 24px; }
+  .code { height: 55vh; border-left: 0; border-top: 1px solid var(--trait); }
+}
+
+/* -------------------------------------------------------------- impression */
+@media print {
+  html, body { height: auto; overflow: visible; }
+  .app { display: block; height: auto; }
+  .lecture, .fiche, .fiche-corps { display: block; }
+  .sommaire, .fiche .vue-outils, .code, .actions, .infobulle, .aide { display: none !important; }
+  .fiche-entete { max-height: none; overflow: visible; }
+  .decisions-toile, .arbre-decisions { overflow: visible; background: none; }
+  .decisions-toile svg { max-width: 100%; height: auto; }
+}

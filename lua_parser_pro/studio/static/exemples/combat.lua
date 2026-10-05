@@ -12,6 +12,9 @@ local Bestiaire = {
     Gardien = { Vie = 120, Armure = 8, Bouclier = 3 },
 }
 
+--- Vrai si la valeur figure dans la liste ; une liste absente compte pour vide.
+-- @param liste les éléments à parcourir, ou nil
+-- @param valeur l'élément cherché
 local function contient(liste, valeur)
     for _, element in ipairs(liste or {}) do
         if element == valeur then
@@ -21,6 +24,8 @@ local function contient(liste, valeur)
     return false
 end
 
+--- Chance de coup critique, entre 0 et 1 : celle des règles, plus celle de l'arme.
+--- Artémis l'augmente ; Arès la double quand le héros est en danger.
 local function chanceDeCritique(heros, arme)
     local chance = Regles.CritiqueDeBase + (arme.Critique or 0)
     if heros.Benedictions.Artemis then
@@ -32,6 +37,12 @@ local function chanceDeCritique(heros, arme)
     return math.min(chance, 1)
 end
 
+--- Résout une attaque du héros contre une cible : bouclier, faiblesses, coup
+--- critique, effets en cours et exécution des cibles affaiblies.
+-- @param heros celui qui frappe
+-- @param cible celle qui reçoit le coup
+-- @param arme l'arme employée
+-- @return true et les dégâts infligés, ou false et la raison de l'échec
 function ResoudreAttaque(heros, cible, arme)
     if not cible or cible.Vie <= 0 then
         return false, "cible invalide"

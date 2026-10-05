@@ -1,4 +1,4 @@
-"""Command-line syntax validation, JSON export and launcher of the Studio."""
+"""Command-line syntax validation, JSON and HTML export, and launcher of the Studio."""
 from __future__ import annotations
 
 import argparse
@@ -54,6 +54,9 @@ def _arguments() -> argparse.ArgumentParser:
     output.add_argument("--outline", action="store_true",
                         help="export the functions, tables and module-level variables")
     output.add_argument("--stats", action="store_true", help="export counts describing the source")
+    output.add_argument("--html", action="store_true",
+                        help="export the decision diagrams of every function as one standalone "
+                             "HTML page (redirect it to a .html file)")
     output.add_argument("--gui", "--studio", dest="gui", action="store_true",
                         help="open the Studio, a local interface in the web browser")
     parser.add_argument("--compact", action="store_true", help="write compact JSON")
@@ -138,6 +141,13 @@ def _run(args: argparse.Namespace) -> int:
             lexer = Lexer(source, **limits)
             tokens = lexer.tokenize()
             result: Any = {"tokens": to_dict(tokens), "comments": to_dict(lexer.comments)}
+        elif args.html:
+            from .studio.report import build_report  # Imported on demand, like the Studio.
+            page = build_report(source, filename, max_depth=args.max_depth,
+                                max_tokens=args.max_tokens,
+                                max_source_length=args.max_source_length, encoding=encoding)
+            sys.stdout.write(page)
+            return 0
         elif args.outline or args.stats:
             parser = Parser(source, max_depth=args.max_depth, **limits)
             tree = parser.parse()

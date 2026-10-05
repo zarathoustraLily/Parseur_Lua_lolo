@@ -133,7 +133,8 @@ class Document:
     """One analysed text, kept so that the browser can ask for more detail."""
 
     def __init__(self, identifier: str, name: str, source: str, max_depth: int,
-                 encoding: str = "utf-8") -> None:
+                 encoding: str = "utf-8", *, max_tokens: int = 1_000_000,
+                 max_source_length: int = 10_000_000) -> None:
         self.id = identifier
         self.name = name
         self.source = source
@@ -150,6 +151,7 @@ class Document:
         self.comments: tuple[Token, ...] = ()
         self.tree: ast.Chunk | None = None
         self.error: dict[str, Any] | None = None
+        self.exception: LuaSyntaxError | None = None
         self._merged: list[Token] | None = None
         self._measures: dict[str, Any] | None = None
         self._functions: list[dict[str, Any]] | None = None
@@ -158,7 +160,8 @@ class Document:
         started = time.perf_counter()
         lexed = started
         try:
-            parser = Parser(source, filename=name, max_depth=max_depth, encoding=encoding)
+            parser = Parser(source, filename=name, max_depth=max_depth, encoding=encoding,
+                            max_tokens=max_tokens, max_source_length=max_source_length)
             self.tokens = parser.tokens
             self.comments = parser.lexer.comments
             lexed = time.perf_counter()
@@ -166,6 +169,7 @@ class Document:
         except LuaSyntaxError as error:
             if self.tokens is None:
                 lexed = time.perf_counter()
+            self.exception = error
             self.error = self._diagnostic(error, "syntaxe" if self.tokens is not None else "lexique")
         finished = time.perf_counter()
         self.milliseconds = {"lexique": round((lexed - started) * 1000, 2),
@@ -283,13 +287,16 @@ class Document:
         self._functions = found
         return found
 
-    def decisions(self, identifier: int) -> dict[str, Any] | None:
-        """The decision diagram of one function (0 is the script itself)."""
+    def function_node(self, identifier: int) -> ast.FunctionExpression | ast.Chunk | None:
+        """The node of one function listed by :meth:`functions` (0 is the script itself)."""
         if self.tree is None:
             return None
         self.functions()
-        node: ast.FunctionExpression | ast.Chunk | None
-        node = self.tree if identifier == 0 else self._function_nodes.get(identifier)
+        return self.tree if identifier == 0 else self._function_nodes.get(identifier)
+
+    def decisions(self, identifier: int) -> dict[str, Any] | None:
+        """The decision diagram of one function (0 is the script itself)."""
+        node = self.function_node(identifier)
         if node is None:
             return None
         flow = decision_flow(node, self.source)
