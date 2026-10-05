@@ -1,0 +1,222 @@
+<!doctype html>
+<html lang="fr" data-theme="nuit">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark light">
+<title>Studio du parseur Lua</title>
+<link rel="icon" type="image/svg+xml" href="/static/lune.svg">
+<link rel="stylesheet" href="/static/app.css">
+</head>
+<body>
+<div class="app" id="app">
+
+  <header class="entete">
+    <div class="marque">
+      <svg class="lune" id="lune" viewBox="0 0 40 40" role="img" aria-labelledby="etat">
+        <circle class="lune-halo" cx="20" cy="20" r="17"></circle>
+        <circle class="lune-ombre" cx="20" cy="20" r="13"></circle>
+        <path class="lune-clair" id="lune-clair" d=""></path>
+        <g class="lune-relief">
+          <circle cx="24.5" cy="14.5" r="2.4"></circle>
+          <circle cx="15.5" cy="23" r="3.1"></circle>
+          <circle cx="25" cy="25.5" r="1.5"></circle>
+        </g>
+      </svg>
+      <div class="marque-texte">
+        <span class="marque-nom">Parseur Lua</span>
+        <span class="marque-etat" id="etat" aria-live="polite">Prêt</span>
+      </div>
+    </div>
+
+    <div class="document">
+      <span class="document-nom" id="document-nom">sans-titre.lua</span>
+      <span class="document-detail" id="document-detail"></span>
+    </div>
+
+    <nav class="actions" aria-label="Actions">
+      <button class="bouton" id="btn-explorateur" type="button" aria-pressed="false" title="Afficher ou masquer le volet du dossier">Dossier</button>
+      <button class="bouton" id="btn-fichier" type="button" title="Ouvrir un fichier Lua (Ctrl+O)">Ouvrir un fichier</button>
+      <button class="bouton" id="btn-dossier" type="button" title="Ouvrir un dossier de scripts (Ctrl+Maj+O)">Ouvrir un dossier</button>
+      <div class="menu">
+        <button class="bouton" id="btn-exemples" type="button" aria-haspopup="true" aria-expanded="false">Exemples</button>
+        <div class="menu-liste" id="menu-exemples" role="menu" hidden></div>
+      </div>
+      <div class="menu">
+        <button class="bouton" id="btn-exporter" type="button" aria-haspopup="true" aria-expanded="false">Exporter</button>
+        <div class="menu-liste" id="menu-exporter" role="menu" hidden>
+          <button type="button" role="menuitem" data-export="arbre">Arbre syntaxique en JSON…</button>
+          <button type="button" role="menuitem" data-export="arbre-compact">Arbre en JSON compact…</button>
+          <button type="button" role="menuitem" data-export="jetons">Jetons en JSON…</button>
+        </div>
+      </div>
+      <button class="bouton" id="btn-theme" type="button">Jour</button>
+    </nav>
+  </header>
+
+  <main class="atelier sans-explorateur" id="atelier">
+
+    <aside class="volet explorateur" id="explorateur" aria-label="Dossier">
+      <div class="volet-entete">
+        <h2 class="volet-titre">Dossier</h2>
+        <span class="volet-note" id="dossier-racine"></span>
+      </div>
+      <div class="explorateur-outils" id="explorateur-outils" hidden>
+        <button class="bouton bouton-fort" id="btn-verifier" type="button">Vérifier tous les fichiers</button>
+        <div class="avancement" id="avancement" hidden>
+          <div class="avancement-piste"><div class="avancement-barre" id="avancement-barre"></div></div>
+          <span class="avancement-texte" id="avancement-texte"></span>
+        </div>
+        <div class="filtre">
+          <input class="champ" id="filtre-fichiers" type="search" placeholder="Filtrer les fichiers" aria-label="Filtrer les fichiers">
+          <label class="coche"><input type="checkbox" id="filtre-erreurs"> Erreurs seulement</label>
+        </div>
+      </div>
+      <div class="vide" id="explorateur-vide">
+        <strong>Aucun dossier ouvert</strong>
+        Ouvrez le dossier de vos scripts pour les parcourir et vérifier leur syntaxe d'un seul geste.
+        <button class="bouton bouton-fort" id="btn-dossier-vide" type="button">Ouvrir un dossier</button>
+      </div>
+      <div class="liste-fichiers" id="liste-fichiers" tabindex="0" role="listbox" aria-label="Fichiers du dossier"></div>
+    </aside>
+
+    <div class="poignee" id="poignee-explorateur" role="separator" aria-orientation="vertical" tabindex="0" aria-label="Redimensionner le volet du dossier"></div>
+
+    <section class="volet volet-editeur" aria-label="Code source">
+      <div class="editeur" id="editeur">
+        <div class="gouttiere" id="gouttiere" aria-hidden="true"><div class="gouttiere-lignes" id="gouttiere-lignes"></div></div>
+        <div class="zone" id="zone">
+          <div class="ligne-courante" id="ligne-courante"></div>
+          <pre class="calque" id="calque" aria-hidden="true"></pre>
+          <textarea class="saisie" id="saisie" spellcheck="false" autocapitalize="off" autocomplete="off" autocorrect="off" wrap="off" aria-label="Code Lua à analyser" placeholder="Écrivez ou collez du Lua ici, ou déposez un fichier .lua sur cette fenêtre."></textarea>
+        </div>
+        <div class="depot" id="depot" hidden>Déposez un fichier .lua pour l'analyser</div>
+      </div>
+      <div class="diagnostic" id="diagnostic" hidden>
+        <svg class="diagnostic-icone" viewBox="0 0 20 20" aria-hidden="true"><path d="M10 2.5 18.5 17h-17z"></path><path class="trait" d="M10 8v4.2M10 14.4v.2"></path></svg>
+        <div class="diagnostic-texte">
+          <strong id="diagnostic-titre"></strong>
+          <span id="diagnostic-message"></span>
+          <span class="diagnostic-origine" id="diagnostic-origine"></span>
+        </div>
+        <button class="bouton" id="btn-aller-erreur" type="button" title="Aller à l'erreur (F8)">Aller à l'erreur</button>
+      </div>
+    </section>
+
+    <div class="poignee" id="poignee-inspecteur" role="separator" aria-orientation="vertical" tabindex="0" aria-label="Redimensionner l'éditeur"></div>
+
+    <section class="volet inspecteur" id="inspecteur-a" aria-label="Analyse">
+      <div class="onglets" role="tablist" data-volet="a"></div>
+      <div class="vue-hote" id="hote-a"></div>
+    </section>
+
+    <div class="poignee poignee-large" id="poignee-inspecteur-b" role="separator" aria-orientation="vertical" tabindex="0" aria-label="Redimensionner le second volet d'analyse"></div>
+
+    <section class="volet inspecteur inspecteur-b" id="inspecteur-b" aria-label="Analyse, second volet">
+      <div class="onglets" role="tablist" data-volet="b"></div>
+      <div class="vue-hote" id="hote-b"></div>
+    </section>
+  </main>
+
+  <footer class="etat-barre">
+    <span class="etat-curseur" id="etat-curseur">Ligne 1, colonne 1</span>
+    <nav class="fil" id="fil" aria-label="Position dans l'arbre"></nav>
+    <span class="etat-mesures" id="etat-mesures"></span>
+  </footer>
+</div>
+
+<!-- Les vues de l'inspecteur : chacune est placée dans le volet qui l'affiche. -->
+<div id="vues" hidden>
+
+  <div class="vue" id="vue-arbre" data-vue="arbre">
+    <div class="vue-outils">
+      <button class="bouton bouton-discret" id="btn-replier" type="button">Tout replier</button>
+      <label class="coche"><input type="checkbox" id="suivre-arbre" checked> Suivre le curseur</label>
+      <span class="vue-avis" id="arbre-avis" hidden></span>
+    </div>
+    <div class="arbre" id="arbre" role="tree" aria-label="Arbre syntaxique" tabindex="0"></div>
+  </div>
+
+  <div class="vue" id="vue-plan" data-vue="plan">
+    <div class="vue-outils">
+      <input class="champ" id="filtre-plan" type="search" placeholder="Filtrer par nom" aria-label="Filtrer le plan par nom">
+      <span class="vue-note" id="plan-compte"></span>
+    </div>
+    <div class="plan" id="plan"></div>
+  </div>
+
+  <div class="vue" id="vue-decisions" data-vue="decisions">
+    <div class="vue-outils">
+      <select class="champ champ-choix" id="choix-fonction" aria-label="Fonction affichée"></select>
+      <label class="coche"><input type="checkbox" id="suivre-decisions" checked> Suivre le curseur</label>
+      <span class="niveaux" id="niveaux" role="group" aria-label="Niveaux d'imbrication dessinés" title="Niveaux d'imbrication dessinés. Un double-clic sur un test ou une boucle replie ou déplie ce qu'il commande.">
+        <span class="niveaux-nom">Niveaux</span>
+        <button class="bouton bouton-discret" type="button" data-niveau="1" aria-pressed="false">1</button>
+        <button class="bouton bouton-discret" type="button" data-niveau="2" aria-pressed="false">2</button>
+        <button class="bouton bouton-discret" type="button" data-niveau="3" aria-pressed="false">3</button>
+        <button class="bouton bouton-discret" type="button" data-niveau="tout" aria-pressed="true">Tous</button>
+      </span>
+      <span class="zoom">
+        <button class="bouton bouton-discret" id="zoom-moins" type="button" aria-label="Réduire">−</button>
+        <button class="bouton bouton-discret" id="zoom-ajuster" type="button">Ajuster</button>
+        <button class="bouton bouton-discret" id="zoom-plus" type="button" aria-label="Agrandir">+</button>
+      </span>
+    </div>
+    <div class="decisions">
+      <div class="decisions-resume" id="decisions-resume"></div>
+      <div class="decisions-toile" id="decisions-toile" tabindex="0" aria-label="Diagramme des décisions"></div>
+    </div>
+  </div>
+
+  <div class="vue" id="vue-jetons" data-vue="jetons">
+    <div class="vue-outils">
+      <button class="bouton bouton-discret" id="jetons-precedent" type="button">Précédents</button>
+      <button class="bouton bouton-discret" id="jetons-suivant" type="button">Suivants</button>
+      <button class="bouton bouton-discret" id="jetons-curseur" type="button">Jeton sous le curseur</button>
+      <span class="vue-note" id="jetons-compte"></span>
+    </div>
+    <div class="jetons" id="jetons"></div>
+  </div>
+
+  <div class="vue" id="vue-mesures" data-vue="mesures">
+    <div class="mesures" id="mesures"></div>
+  </div>
+</div>
+
+<input type="file" id="selecteur-fichier" accept=".lua,.txt,text/plain" hidden>
+
+<dialog class="dialogue" id="dialogue-dossier" aria-labelledby="dialogue-titre">
+  <form method="dialog" class="dialogue-corps" id="dialogue-formulaire">
+    <h2 class="dialogue-titre" id="dialogue-titre">Ouvrir un dossier</h2>
+    <p class="dialogue-aide">Tous les fichiers .lua du dossier et de ses sous-dossiers seront listés. Rien n'est modifié sur le disque.</p>
+    <div class="dialogue-chemin">
+      <input class="champ" id="dossier-chemin" type="text" spellcheck="false" aria-label="Chemin du dossier">
+      <button class="bouton" id="dossier-aller" type="button">Aller</button>
+    </div>
+    <div class="dialogue-lecteurs" id="dossier-lecteurs"></div>
+    <div class="dialogue-liste" id="dossier-liste" role="listbox" aria-label="Sous-dossiers"></div>
+    <p class="dialogue-note" id="dossier-note"></p>
+    <div class="dialogue-actions">
+      <button class="bouton" value="annuler" type="submit">Annuler</button>
+      <button class="bouton bouton-fort" id="dossier-ouvrir" value="ouvrir" type="button">Ouvrir ce dossier</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog class="dialogue dialogue-etroit" id="dialogue-export" aria-labelledby="export-titre">
+  <form method="dialog" class="dialogue-corps" id="export-formulaire">
+    <h2 class="dialogue-titre" id="export-titre">Enregistrer l'export</h2>
+    <label class="dialogue-aide" for="export-nom">Nom du fichier</label>
+    <input class="champ" id="export-nom" type="text" spellcheck="false" autocomplete="off" maxlength="200" required>
+    <p class="dialogue-note">Ce navigateur range le fichier dans son dossier de téléchargements. Pour choisir aussi le dossier, ouvrez le Studio dans Chrome ou Edge, ou activez «&nbsp;Toujours demander où enregistrer les fichiers&nbsp;» dans les réglages du navigateur.</p>
+    <div class="dialogue-actions">
+      <button class="bouton" id="export-annuler" type="button">Annuler</button>
+      <button class="bouton bouton-fort" id="export-valider" value="enregistrer" type="submit">Enregistrer</button>
+    </div>
+  </form>
+</dialog>
+
+<div class="annonces" id="annonces" aria-live="polite"></div>
+<script type="module" src="/static/app.js"></script>
+</body>
+</html>

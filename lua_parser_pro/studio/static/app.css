@@ -1,0 +1,531 @@
+/* Studio du parseur Lua.
+   Une nuit de pleine lune : « lua » veut dire lune. La lune de l'en-tête dit
+   l'état de l'analyse ; tout le reste reste discret autour du code. */
+
+@font-face {
+  font-family: "Atkinson Hyperlegible Next";
+  src: url("fonts/atkinson-hyperlegible-next-latin-400-normal.woff2") format("woff2");
+  font-weight: 400; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: "Atkinson Hyperlegible Next";
+  src: url("fonts/atkinson-hyperlegible-next-latin-400-italic.woff2") format("woff2");
+  font-weight: 400; font-style: italic; font-display: swap;
+}
+@font-face {
+  font-family: "Atkinson Hyperlegible Next";
+  src: url("fonts/atkinson-hyperlegible-next-latin-600-normal.woff2") format("woff2");
+  font-weight: 600; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: "Atkinson Hyperlegible Mono";
+  src: url("fonts/atkinson-hyperlegible-mono-latin-400-normal.woff2") format("woff2");
+  font-weight: 400; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: "Atkinson Hyperlegible Mono";
+  src: url("fonts/atkinson-hyperlegible-mono-latin-400-italic.woff2") format("woff2");
+  font-weight: 400; font-style: italic; font-display: swap;
+}
+@font-face {
+  font-family: "Atkinson Hyperlegible Mono";
+  src: url("fonts/atkinson-hyperlegible-mono-latin-600-normal.woff2") format("woff2");
+  font-weight: 600; font-style: normal; font-display: swap;
+}
+
+:root {
+  --texte: "Atkinson Hyperlegible Next", "Segoe UI", system-ui, sans-serif;
+  --code: "Atkinson Hyperlegible Mono", "Cascadia Mono", Consolas, monospace;
+  --t-petit: 11.5px;
+  --t-note: 12.5px;
+  --t-base: 13.5px;
+  --t-titre: 15px;
+  --t-chiffre: 22px;
+  --t-code: 13px;
+  --h-ligne: 21px;          /* hauteur d'une ligne de code : l'éditeur en dépend */
+  --rayon: 6px;
+}
+
+:root[data-theme="nuit"] {
+  color-scheme: dark;
+  --fond: #0c1124;
+  --panneau: #121935;
+  --releve: #1a2347;
+  --trait: #2a3566;
+  --trait-fort: #3d4a86;
+  --encre: #e9e6d9;
+  --encre-2: #aeb5d3;
+  --encre-3: #8791b5;
+  --lune: #f1d588;
+  --lune-voile: rgba(241, 213, 136, .16);
+  --sur-lune: #1c1a10;
+  --ciel: #8fb0ff;
+  --ciel-voile: rgba(143, 176, 255, .15);
+  --ok: #6ed3a0;
+  --erreur: #ff8f85;
+  --erreur-voile: rgba(255, 143, 133, .17);
+  --barre: #6f8fe8;
+  --s-mot: #a3b6ff;
+  --s-chaine: #e9cd82;
+  --s-nombre: #f3a893;
+  --s-comm: #7c87b3;
+  --s-appel: #86dccb;
+  --s-const: #dcaef2;
+  --s-ponct: #aab3d8;
+  --lune-disque: #f6e7b4;
+  --lune-nuit: #27325f;
+  --lune-relief: rgba(120, 96, 32, .2);
+  --eclipse: #c4604a;
+  --ombre: 0 18px 50px rgba(2, 5, 18, .6);
+}
+
+:root[data-theme="jour"] {
+  color-scheme: light;
+  --fond: #e7ebf4;
+  --panneau: #f8f9fc;
+  --releve: #edf0f8;
+  --trait: #cdd4e6;
+  --trait-fort: #a9b3d0;
+  --encre: #161c3d;
+  --encre-2: #444c72;
+  --encre-3: #5d658a;
+  --lune: #8a6100;
+  --lune-voile: rgba(214, 160, 20, .22);
+  --sur-lune: #ffffff;
+  --ciel: #2f48c4;
+  --ciel-voile: rgba(47, 72, 196, .11);
+  --ok: #0f7a4a;
+  --erreur: #c2281c;
+  --erreur-voile: rgba(194, 40, 28, .11);
+  --barre: #4a67d6;
+  --s-mot: #3045c0;
+  --s-chaine: #855600;
+  --s-nombre: #b23b24;
+  --s-comm: #677096;
+  --s-appel: #0b6f60;
+  --s-const: #8537ac;
+  --s-ponct: #4a5378;
+  --lune-disque: #f2cf6b;
+  --lune-nuit: #c3cbe2;
+  --lune-relief: rgba(120, 84, 0, .2);
+  --eclipse: #b23b24;
+  --ombre: 0 18px 50px rgba(30, 40, 90, .22);
+}
+
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+body {
+  background: var(--fond);
+  color: var(--encre);
+  font: 400 var(--t-base)/1.45 var(--texte);
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+}
+h2 { margin: 0; font: inherit; }
+button, input, select, textarea { font: inherit; color: inherit; }
+[hidden] { display: none !important; }
+:focus-visible { outline: 2px solid var(--lune); outline-offset: 2px; border-radius: 3px; }
+::selection { background: var(--lune-voile); }
+
+/* Barres de défilement fines, dans le ton. */
+* { scrollbar-width: thin; scrollbar-color: var(--trait-fort) transparent; }
+
+/* ------------------------------------------------------------------ gabarit */
+.app { display: grid; grid-template-rows: auto minmax(0, 1fr) auto; height: 100dvh; }
+
+.entete {
+  display: flex; align-items: center; gap: 20px;
+  padding: 8px 14px 8px 12px;
+  border-bottom: 1px solid var(--trait);
+  background: var(--fond);
+  min-width: 0;
+}
+.marque { display: flex; align-items: center; gap: 10px; flex: none; }
+.marque-texte { display: flex; flex-direction: column; line-height: 1.2; }
+.marque-nom { font-weight: 600; font-size: var(--t-titre); letter-spacing: .01em; }
+.marque-etat { font-size: var(--t-note); color: var(--encre-2); }
+.app[data-etat="erreur"] .marque-etat { color: var(--erreur); }
+.app[data-etat="valide"] .marque-etat { color: var(--ok); }
+
+.document { display: flex; align-items: baseline; gap: 10px; min-width: 0; flex: 1; padding-left: 18px; border-left: 1px solid var(--trait); }
+.document-nom { font: 600 var(--t-base)/1.3 var(--code); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.document-detail { color: var(--encre-3); font-size: var(--t-note); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.actions { display: flex; align-items: center; gap: 6px; flex: none; }
+
+/* La lune : pleine quand la syntaxe est valide, éclipsée en cas d'erreur,
+   croissante pendant une analyse ou une vérification de dossier. */
+.lune { width: 40px; height: 40px; flex: none; overflow: visible; }
+.lune-halo { fill: var(--lune-disque); opacity: 0; transition: opacity .5s ease; }
+.lune-ombre { fill: var(--lune-nuit); }
+.lune-clair { fill: var(--lune-disque); transition: fill .4s ease; }
+.lune-relief circle { fill: var(--lune-relief); }
+.app[data-etat="valide"] .lune-halo { opacity: .13; }
+.app[data-etat="erreur"] .lune-clair { fill: var(--eclipse); }
+.app[data-etat="erreur"] .lune-halo { fill: var(--eclipse); opacity: .2; }
+
+/* ------------------------------------------------------------------ boutons */
+.bouton {
+  appearance: none; cursor: pointer;
+  background: transparent; color: var(--encre);
+  border: 1px solid var(--trait); border-radius: var(--rayon);
+  padding: 5px 11px; line-height: 1.35; white-space: nowrap;
+  transition: background-color .12s ease, border-color .12s ease;
+}
+.bouton:hover { background: var(--releve); border-color: var(--trait-fort); }
+.bouton:active { background: var(--trait); }
+.bouton[aria-pressed="true"], .bouton[aria-expanded="true"] { background: var(--releve); border-color: var(--trait-fort); }
+.bouton:disabled { opacity: .5; cursor: default; }
+.bouton-fort { background: var(--lune); border-color: var(--lune); color: var(--sur-lune); font-weight: 600; }
+.bouton-fort:hover { background: var(--lune); border-color: var(--lune); filter: brightness(1.08); }
+.bouton-discret { border-color: transparent; padding: 3px 8px; color: var(--encre-2); }
+.bouton-discret:hover { color: var(--encre); }
+
+.champ {
+  background: var(--fond); border: 1px solid var(--trait); border-radius: var(--rayon);
+  padding: 5px 9px; min-width: 0; width: 100%;
+}
+.champ::placeholder { color: var(--encre-3); }
+.champ:focus-visible { outline-offset: 0; }
+.champ-choix { width: auto; max-width: 100%; flex: 1 1 180px; font-family: var(--code); font-size: var(--t-note); }
+.coche { display: inline-flex; align-items: center; gap: 6px; color: var(--encre-2); font-size: var(--t-note); white-space: nowrap; cursor: pointer; }
+.coche input { accent-color: var(--lune); margin: 0; }
+
+.menu { position: relative; }
+.menu-liste {
+  position: absolute; right: 0; top: calc(100% + 6px); z-index: 30;
+  min-width: 240px; padding: 5px;
+  background: var(--panneau); border: 1px solid var(--trait-fort); border-radius: 8px;
+  box-shadow: var(--ombre);
+  display: flex; flex-direction: column;
+}
+.menu-liste button {
+  appearance: none; border: 0; background: transparent; text-align: left; cursor: pointer;
+  padding: 7px 10px; border-radius: 5px;
+}
+.menu-liste button:hover, .menu-liste button:focus-visible { background: var(--releve); }
+.menu-liste small { display: block; color: var(--encre-3); font-size: var(--t-petit); }
+
+/* ------------------------------------------------------------------ atelier */
+.atelier {
+  --l-explorateur: 290px;
+  --l-inspecteur: 42%;
+  --l-inspecteur-b: 0px;
+  display: grid; min-height: 0; min-width: 0; position: relative;
+  grid-template-columns: var(--l-explorateur) 7px minmax(300px, 1fr) 7px minmax(280px, var(--l-inspecteur));
+}
+.atelier .inspecteur-b, .atelier .poignee-large { display: none; }
+.atelier.large {
+  --l-inspecteur: 36%;
+  --l-inspecteur-b: 18%;
+  grid-template-columns: var(--l-explorateur) 7px minmax(300px, 1fr) 7px minmax(280px, var(--l-inspecteur)) 7px minmax(280px, var(--l-inspecteur-b));
+}
+.atelier.large .inspecteur-b { display: flex; }
+.atelier.large .poignee-large { display: block; }
+.atelier.sans-explorateur { grid-template-columns: minmax(300px, 1fr) 7px minmax(280px, var(--l-inspecteur)); }
+.atelier.large.sans-explorateur { grid-template-columns: minmax(300px, 1fr) 7px minmax(280px, var(--l-inspecteur)) 7px minmax(280px, var(--l-inspecteur-b)); }
+.atelier.sans-explorateur .explorateur, .atelier.sans-explorateur #poignee-explorateur { display: none; }
+
+.volet { background: var(--panneau); min-width: 0; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
+.volet-entete { display: flex; align-items: baseline; gap: 10px; padding: 10px 12px 8px; }
+.volet-titre { font-weight: 600; }
+.volet-note { color: var(--encre-3); font: var(--t-petit)/1.3 var(--code); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; direction: rtl; text-align: left; }
+
+.poignee { background: var(--fond); cursor: col-resize; position: relative; }
+.poignee::after { content: ""; position: absolute; inset: 0 3px; background: var(--trait); transition: background-color .12s ease; }
+.poignee:hover::after, .poignee.tire::after, .poignee:focus-visible::after { background: var(--lune); }
+.poignee:focus-visible { outline: none; }
+
+/* ------------------------------------------------------------------ éditeur */
+.volet-editeur { position: relative; }
+.editeur { position: relative; flex: 1; min-height: 0; display: grid; grid-template-columns: auto minmax(0, 1fr); background: var(--panneau); }
+.gouttiere {
+  overflow: hidden; user-select: none; text-align: right;
+  color: var(--encre-3); background: var(--panneau);
+  border-right: 1px solid var(--trait);
+  font: var(--t-code)/var(--h-ligne) var(--code);
+  min-width: 46px;
+}
+.gouttiere-lignes { padding: 10px 10px 10px 12px; white-space: pre; will-change: transform; }
+.gouttiere-lignes .ici { color: var(--encre); }
+.gouttiere-lignes .faute { color: var(--erreur); font-weight: 600; }
+.zone { position: relative; overflow: hidden; min-width: 0; }
+.saisie, .calque {
+  margin: 0; border: 0; padding: 10px 14px;
+  font: var(--t-code)/var(--h-ligne) var(--code);
+  tab-size: 4; -moz-tab-size: 4; white-space: pre; letter-spacing: 0;
+}
+.saisie {
+  position: absolute; inset: 0; width: 100%; height: 100%; resize: none; outline: none;
+  background: transparent; color: transparent; caret-color: var(--lune);
+  overflow: auto; overscroll-behavior: contain;
+}
+.saisie::selection { background: var(--ciel-voile); color: transparent; }
+.saisie::placeholder { color: var(--encre-3); font-family: var(--texte); font-style: italic; }
+.calque { position: absolute; left: 0; top: 0; pointer-events: none; color: var(--encre); will-change: transform; min-width: 100%; }
+.ligne-courante { position: absolute; left: 0; right: 0; height: var(--h-ligne); background: var(--releve); opacity: .55; pointer-events: none; will-change: transform; }
+
+.j-c { color: var(--s-comm); font-style: italic; }
+.j-s { color: var(--s-chaine); }
+.j-n { color: var(--s-nombre); }
+.j-k { color: var(--s-mot); }
+.j-b { color: var(--s-const); }
+.j-f { color: var(--s-appel); }
+.j-p { color: var(--s-ponct); }
+/* Sans arrondi ni contour : les fragments voisins d'une même marque se touchent. */
+.m-sel { background: var(--lune-voile); }
+.m-survol { background: var(--ciel-voile); }
+.m-err { background: var(--erreur-voile); text-decoration: underline wavy var(--erreur) 1.5px; text-underline-offset: 3px; }
+
+.depot {
+  position: absolute; inset: 10px; z-index: 5; display: grid; place-items: center;
+  border: 2px dashed var(--lune); border-radius: 10px; background: color-mix(in srgb, var(--fond) 86%, transparent);
+  font-size: var(--t-titre); color: var(--encre);
+}
+
+.diagnostic {
+  display: flex; align-items: center; gap: 12px;
+  padding: 9px 12px; border-top: 1px solid var(--erreur);
+  background: var(--erreur-voile);
+}
+.diagnostic-icone { width: 20px; height: 20px; flex: none; fill: none; stroke: var(--erreur); stroke-width: 1.6; stroke-linejoin: round; }
+.diagnostic-icone .trait { stroke-linecap: round; }
+.diagnostic-texte { flex: 1; min-width: 0; display: flex; flex-wrap: wrap; column-gap: 8px; }
+.diagnostic-texte strong { font-weight: 600; }
+.diagnostic-origine { color: var(--encre-3); font: var(--t-petit)/1.9 var(--code); }
+
+/* --------------------------------------------------------------- inspecteur */
+.onglets { display: flex; gap: 2px; padding: 0 8px; border-bottom: 1px solid var(--trait); flex: none; overflow-x: auto; scrollbar-width: none; }
+.onglet {
+  appearance: none; background: transparent; border: 0; cursor: pointer;
+  padding: 10px 10px 8px; color: var(--encre-2);
+  border-bottom: 2px solid transparent; white-space: nowrap;
+  transition: color .12s ease, border-color .12s ease;
+}
+.onglet:hover { color: var(--encre); }
+.onglet[aria-selected="true"] { color: var(--encre); font-weight: 600; border-bottom-color: var(--lune); }
+.onglet-compte { color: var(--encre-3); font-weight: 400; font-size: var(--t-petit); margin-left: 5px; }
+.vue-hote { flex: 1; min-height: 0; display: flex; }
+.vue { flex: 1; min-width: 0; min-height: 0; display: flex; flex-direction: column; }
+.vue-outils { display: flex; align-items: center; gap: 10px; padding: 7px 10px; border-bottom: 1px solid var(--trait); flex: none; flex-wrap: wrap; }
+.vue-outils .champ { flex: 1 1 150px; width: auto; }
+.vue-note { color: var(--encre-3); font-size: var(--t-note); margin-left: auto; white-space: nowrap; }
+.vue-avis { color: var(--lune); font-size: var(--t-note); }
+.vue.perime > :not(.vue-outils) { opacity: .5; }
+.vide { padding: 28px 20px; color: var(--encre-2); max-width: 46ch; }
+.vide strong { display: block; color: var(--encre); font-weight: 600; margin-bottom: 4px; }
+.vide .bouton { display: block; margin-top: 14px; }
+.arbre:focus-visible, .plan:focus-visible, .liste-fichiers:focus-visible, .decisions-toile:focus-visible {
+  outline: 2px solid var(--lune); outline-offset: -2px;
+}
+
+/* Arbre syntaxique */
+.arbre { flex: 1; overflow: auto; padding: 6px 0 16px; font-size: var(--t-note); outline: none; }
+.noeud {
+  display: flex; align-items: baseline; gap: 6px; cursor: pointer;
+  padding: 1.5px 10px 1.5px calc(8px + var(--niveau) * 14px); white-space: nowrap;
+  border-left: 2px solid transparent;
+}
+.noeud:hover { background: var(--releve); }
+.noeud[aria-selected="true"] { background: var(--lune-voile); border-left-color: var(--lune); }
+.noeud-pli { width: 12px; height: 12px; flex: none; align-self: center; position: relative; }
+.noeud-pli::before {
+  content: ""; position: absolute; left: 3px; top: 2px;
+  border: 4px solid transparent; border-left: 6px solid var(--encre-3); border-right: 0;
+  transform-origin: 3px 4px; transition: transform .12s ease;
+}
+.noeud[aria-expanded="true"] > .noeud-pli::before { transform: rotate(90deg); }
+.noeud-pli.sans::before { display: none; }
+.noeud-precision { font-family: var(--code); font-weight: 600; color: var(--encre); }
+.noeud-champ { color: var(--encre-3); font-style: italic; }
+.noeud-type { font-family: var(--code); }
+.cat-inst { color: var(--s-mot); }
+.cat-expr { color: var(--s-appel); }
+.cat-lit { color: var(--s-chaine); }
+.cat-struct { color: var(--encre-2); }
+.noeud-resume { font-family: var(--code); color: var(--encre-2); overflow: hidden; text-overflow: ellipsis; }
+.noeud-ligne { margin-left: auto; padding-left: 12px; color: var(--encre-3); font: var(--t-petit)/1 var(--code); }
+.noeud-suite { padding: 4px 10px 4px calc(26px + var(--niveau) * 14px); }
+
+/* Plan */
+.plan { flex: 1; overflow: auto; padding: 6px 0 16px; }
+.symbole {
+  display: grid; grid-template-columns: 22px minmax(0, 1fr) auto; align-items: baseline; gap: 6px; cursor: pointer;
+  padding: 3px 12px 3px calc(10px + var(--niveau) * 16px);
+  border-left: 2px solid transparent;
+}
+.symbole:hover { background: var(--releve); }
+.symbole.actif { background: var(--lune-voile); border-left-color: var(--lune); }
+.symbole-genre { font: 600 var(--t-petit)/1 var(--code); color: var(--encre-3); text-align: center; }
+.symbole[data-genre="function"] .symbole-genre, .symbole[data-genre="method"] .symbole-genre { color: var(--s-appel); }
+.symbole[data-genre="callback"] .symbole-genre { color: var(--s-const); }
+.symbole[data-genre="table"] .symbole-genre { color: var(--s-chaine); }
+.symbole-nom { font-family: var(--code); font-size: var(--t-note); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.symbole-nom i { color: var(--encre-3); font-style: normal; }
+.symbole-detail { color: var(--encre-3); font-size: var(--t-petit); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.pastille { display: inline-block; min-width: 20px; padding: 0 5px; margin-right: 8px; border-radius: 9px; border: 1px solid var(--trait-fort); color: var(--encre-2); text-align: center; font-variant-numeric: tabular-nums; }
+.pastille.haute { border-color: var(--lune); color: var(--lune); }
+
+/* Décisions */
+.decisions { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.decisions-resume { display: flex; flex-wrap: wrap; gap: 6px 22px; padding: 10px 12px; border-bottom: 1px solid var(--trait); align-items: flex-end; }
+.chiffre { display: flex; flex-direction: column; }
+.chiffre-valeur { font-size: var(--t-chiffre); font-weight: 600; line-height: 1.1; }
+.chiffre-nom { color: var(--encre-2); font-size: var(--t-note); }
+.termes { flex: 1 1 340px; min-width: 0; }
+.termes-titre { color: var(--encre-2); font-size: var(--t-note); margin-bottom: 3px; }
+.termes-liste { display: flex; flex-wrap: wrap; gap: 4px 6px; }
+.terme { font: var(--t-petit)/1.5 var(--code); padding: 0 6px; border: 1px solid var(--trait); border-radius: 4px; color: var(--encre-2); }
+.terme b { font-weight: 600; color: var(--encre); margin-left: 5px; }
+.decisions-toile { flex: 1; min-height: 0; overflow: auto; cursor: grab; outline: none; background:
+  radial-gradient(circle at 1px 1px, var(--trait) 1px, transparent 1.2px) 0 0 / 22px 22px; }
+.decisions-toile.glisse { cursor: grabbing; }
+.niveaux, .zoom { display: inline-flex; align-items: center; gap: 1px; white-space: nowrap; }
+.niveaux-nom { color: var(--encre-2); font-size: var(--t-note); margin-right: 4px; }
+.niveaux .bouton { min-width: 26px; padding: 3px 6px; }
+.decisions-toile svg { display: block; margin: 0 auto; }
+.flux text { font: 12px var(--code); fill: var(--encre); dominant-baseline: central; pointer-events: none; }
+.flux .etiquette { font: 11.5px var(--texte); fill: var(--encre-2); }
+.flux .lien { fill: none; stroke: var(--encre-3); stroke-width: 1.4; }
+.flux .pointe { fill: var(--encre-3); }
+.flux .forme { stroke-width: 1.4; stroke-linejoin: round; transition: stroke-width .1s ease; }
+.flux { user-select: none; -webkit-user-select: none; }
+.flux g.etape .forme, .flux g.pli .forme { cursor: pointer; }
+.flux g.etape.actif .forme, .flux g.pli.actif .forme { stroke: var(--lune); stroke-width: 2.6; }
+.flux .f-pli { fill: var(--panneau); stroke: var(--encre-3); stroke-dasharray: 5 3; }
+.flux g.pli:hover .forme, .flux g.pli:focus-visible .forme { stroke: var(--encre); stroke-width: 2.2; }
+.flux g.pli:focus-visible { outline: none; }
+.flux g.pli:hover .etiquette { fill: var(--encre); }
+.flux g.etape:hover .forme, .flux g.etape:focus-visible .forme { stroke-width: 2.6; }
+.flux g.etape:focus-visible { outline: none; }
+.flux .f-action { fill: var(--releve); stroke: var(--trait-fort); }
+.flux .f-test { fill: var(--ciel-voile); stroke: var(--ciel); }
+.flux .f-boucle { fill: var(--lune-voile); stroke: var(--lune); }
+.flux .f-sortie { fill: var(--panneau); stroke: var(--encre-2); }
+.flux .f-erreur { fill: var(--erreur-voile); stroke: var(--erreur); }
+.flux .f-depart { fill: var(--encre); stroke: var(--encre); }
+.flux .t-depart { fill: var(--panneau); font-weight: 600; }
+.flux .t-discret { fill: var(--encre-2); }
+
+/* Jetons */
+.jetons { flex: 1; overflow: auto; }
+.table { width: 100%; border-collapse: collapse; font-size: var(--t-note); }
+.table th { position: sticky; top: 0; background: var(--panneau); text-align: left; font-weight: 400; color: var(--encre-3); padding: 6px 10px; border-bottom: 1px solid var(--trait); white-space: nowrap; z-index: 1; }
+.table td { padding: 2px 10px; border-bottom: 1px solid color-mix(in srgb, var(--trait) 55%, transparent); vertical-align: baseline; }
+.table .num { text-align: right; font-variant-numeric: tabular-nums; color: var(--encre-3); white-space: nowrap; }
+.table .code { font-family: var(--code); white-space: pre; max-width: 0; width: 60%; overflow: hidden; text-overflow: ellipsis; }
+.table tbody tr { cursor: pointer; }
+.table tbody tr:hover { background: var(--releve); }
+.table tbody tr.vise { background: var(--lune-voile); }
+.genre { font-size: var(--t-petit); padding: 0 6px; border-radius: 4px; border: 1px solid var(--trait); color: var(--encre-2); white-space: nowrap; }
+
+/* Mesures */
+.mesures { flex: 1; overflow: auto; padding: 14px 14px 28px; display: flex; flex-direction: column; gap: 22px; }
+.mesures-chiffres { display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 14px 18px; }
+.bloc-titre { font-weight: 600; margin-bottom: 6px; display: flex; align-items: baseline; gap: 10px; }
+.bloc-titre small { color: var(--encre-3); font-weight: 400; font-size: var(--t-note); }
+.barres { width: 100%; border-collapse: collapse; font-size: var(--t-note); table-layout: fixed; }
+.barres td { padding: 2.5px 0; vertical-align: middle; }
+.barres .nom { font-family: var(--code); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 46%; padding-right: 10px; }
+.barres .nom.lien { cursor: pointer; }
+.barres .nom.lien:hover { color: var(--lune); }
+.barres .piste { width: auto; }
+.barres .barre { display: block; height: 8px; min-width: 2px; background: var(--barre); border-radius: 0 4px 4px 0; }
+.barres .valeur { text-align: right; font-variant-numeric: tabular-nums; padding-left: 10px; white-space: nowrap; color: var(--encre-2); width: 64px; }
+.barres tr:hover .barre { filter: brightness(1.2); }
+.mesures-note { margin: 0; color: var(--encre-3); font-size: var(--t-note); }
+
+/* --------------------------------------------------------------- explorateur */
+.explorateur-outils { display: flex; flex-direction: column; gap: 8px; padding: 0 12px 10px; border-bottom: 1px solid var(--trait); }
+.filtre { display: flex; flex-direction: column; gap: 6px; }
+.avancement { display: flex; flex-direction: column; gap: 4px; }
+.avancement-piste { height: 6px; border-radius: 3px; background: var(--ciel-voile); overflow: hidden; }
+.avancement-barre { height: 100%; width: 0; background: var(--ciel); border-radius: 3px; transition: width .2s ease; }
+.avancement-texte { color: var(--encre-2); font-size: var(--t-note); }
+.liste-fichiers { flex: 1; overflow: auto; padding: 4px 0 14px; }
+.fichier {
+  display: grid; grid-template-columns: 14px minmax(0, 1fr) auto; gap: 7px; align-items: baseline;
+  padding: 3px 12px 3px 10px; cursor: pointer; border-left: 2px solid transparent;
+}
+.fichier:hover { background: var(--releve); }
+.fichier.actif { background: var(--lune-voile); border-left-color: var(--lune); }
+.fichier-etat { width: 9px; height: 9px; border-radius: 50%; border: 1.5px solid var(--encre-3); align-self: center; }
+.fichier[data-etat="ok"] .fichier-etat { background: var(--ok); border-color: var(--ok); }
+.fichier[data-etat="erreur"] .fichier-etat { background: var(--erreur); border-color: var(--erreur); border-radius: 2px; }
+.fichiers-pile { position: relative; }
+.fichiers-pile .fichier { position: absolute; left: 0; right: 0; height: 26px; align-content: center; }
+.fichiers-pile .fichier[data-etat="erreur"] { height: 46px; }
+.fichier-nom { font: var(--t-note)/1.4 var(--code); overflow: hidden; white-space: nowrap; display: flex; min-width: 0; }
+.fichier-nom i { color: var(--encre-3); font-style: normal; flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.fichier-nom b { font-weight: 400; flex: none; }
+.fichier-taille { color: var(--encre-3); font-size: var(--t-petit); font-variant-numeric: tabular-nums; }
+.fichier-erreur { grid-column: 2 / -1; color: var(--erreur); font-size: var(--t-petit); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* -------------------------------------------------------------- barre d'état */
+.etat-barre {
+  display: flex; align-items: center; gap: 18px; padding: 4px 12px; min-width: 0;
+  border-top: 1px solid var(--trait); background: var(--fond);
+  color: var(--encre-2); font-size: var(--t-note);
+}
+.etat-curseur { flex: none; font-variant-numeric: tabular-nums; min-width: 150px; }
+.fil { flex: 1; min-width: 0; display: flex; gap: 2px; overflow: hidden; white-space: nowrap; font-family: var(--code); font-size: var(--t-petit); }
+.fil button { appearance: none; border: 0; background: transparent; color: var(--encre-2); cursor: pointer; padding: 1px 4px; border-radius: 3px; }
+.fil button:hover { background: var(--releve); color: var(--encre); }
+.fil span { color: var(--encre-3); }
+.etat-mesures { flex: none; font-variant-numeric: tabular-nums; color: var(--encre-3); }
+
+/* ------------------------------------------------------------------ dialogue */
+.dialogue {
+  border: 1px solid var(--trait-fort); border-radius: 12px; padding: 0;
+  background: var(--panneau); color: var(--encre); box-shadow: var(--ombre);
+  width: min(640px, calc(100vw - 32px));
+}
+.dialogue-etroit { width: min(480px, calc(100vw - 32px)); }
+.dialogue-etroit .champ { font-family: var(--code); font-size: var(--t-note); }
+.dialogue::backdrop { background: rgba(4, 7, 20, .6); }
+.dialogue-corps { padding: 20px 22px 18px; display: flex; flex-direction: column; gap: 10px; }
+.dialogue-titre { font-size: 18px; font-weight: 600; }
+.dialogue-aide, .dialogue-note { margin: 0; color: var(--encre-2); max-width: 62ch; }
+.dialogue-note { font-size: var(--t-note); min-height: 1.5em; }
+.dialogue-chemin { display: flex; gap: 8px; }
+.dialogue-chemin .champ { font-family: var(--code); font-size: var(--t-note); }
+.dialogue-lecteurs { display: flex; flex-wrap: wrap; gap: 6px; }
+.dialogue-liste { height: min(42vh, 340px); overflow: auto; border: 1px solid var(--trait); border-radius: 8px; padding: 4px; background: var(--fond); }
+.dialogue-liste button {
+  appearance: none; display: block; width: 100%; text-align: left; border: 0; background: transparent; cursor: pointer;
+  padding: 5px 9px; border-radius: 5px; font: var(--t-note)/1.4 var(--code);
+}
+.dialogue-liste button:hover, .dialogue-liste button:focus-visible { background: var(--releve); }
+.dialogue-liste .parent { color: var(--encre-2); }
+.dialogue-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 4px; }
+
+.annonces { position: fixed; left: 50%; bottom: 44px; transform: translateX(-50%); z-index: 50; display: flex; flex-direction: column; gap: 8px; align-items: center; pointer-events: none; }
+.annonce {
+  background: var(--encre); color: var(--fond); padding: 8px 14px; border-radius: 8px; box-shadow: var(--ombre);
+  max-width: min(680px, 92vw); animation: annonce .18s ease;
+  display: flex; align-items: center; gap: 14px; pointer-events: auto;
+}
+.annonce-action {
+  appearance: none; cursor: pointer; white-space: nowrap; font-weight: 600;
+  background: transparent; color: inherit; border: 1px solid currentColor; border-radius: 5px; padding: 2px 10px;
+}
+.annonce-action:hover { background: color-mix(in srgb, currentColor 14%, transparent); }
+@keyframes annonce { from { opacity: 0; transform: translateY(6px); } }
+
+/* ------------------------------------------------------------ petits écrans */
+@media (max-width: 900px) {
+  .entete { flex-wrap: wrap; gap: 8px 14px; }
+  .document { order: 3; flex-basis: 100%; padding-left: 0; border-left: 0; }
+  .atelier, .atelier.large, .atelier.sans-explorateur, .atelier.large.sans-explorateur {
+    grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(220px, 46%) minmax(0, 1fr);
+  }
+  .atelier .poignee, .atelier .inspecteur-b { display: none !important; }
+  /* Le volet du dossier recouvre l'atelier, sous l'en-tête dont le bouton « Dossier » le referme. */
+  .atelier .explorateur { position: absolute; inset: 0 auto 0 0; width: min(88vw, 340px); z-index: 20; box-shadow: var(--ombre); border-right: 1px solid var(--trait-fort); }
+  .etat-curseur { min-width: 0; }
+  .fil { display: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition: none !important; animation: none !important; scroll-behavior: auto !important; }
+}
