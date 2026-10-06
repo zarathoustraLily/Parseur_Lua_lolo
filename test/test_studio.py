@@ -291,6 +291,18 @@ class InterfaceTests(ServerCase):
         broken = self.analyse("x = (")["doc"]
         self.assertEqual(self.api("export", {"doc": broken, "genre": "arbre"})[0], 409)
         self.assertEqual(self.api("export", {"doc": broken, "genre": "jetons"})[0], 200)
+        self.assertEqual(self.api("export", {"doc": broken, "genre": "decisions"})[0], 409)
+
+    def test_export_of_the_decisions(self):
+        status, data = self.api("export", {"doc": self.analyse(name="combat/essai.lua")["doc"],
+                                           "genre": "decisions"})
+        self.assertEqual(status, 200)
+        page = data["html"]
+        self.assertTrue(page.startswith("<!doctype html>") and page.isascii())
+        embedded = json.loads(re.search(r'id="donnees">(.*?)</script>', page, re.S)[1])
+        self.assertEqual((embedded["nom"], embedded["source"]), ("essai.lua", SOURCE))
+        names = [entry["nom"] for entry in embedded["fonctions"]]
+        self.assertEqual(names, ["", "frappe", "Ecouter(\u2026)"])
 
     def test_old_analyses_are_forgotten(self):
         first = self.analyse("return 1")["doc"]

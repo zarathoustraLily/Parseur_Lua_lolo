@@ -30,7 +30,7 @@ Le navigateur s'ouvre sur `http://127.0.0.1:8642/`. Pour arrêter le Studio, fer
 | **Mesures** | Lignes, jetons, nœuds, puis les fonctions les plus complexes, les plus longues et les appels les plus fréquents. |
 | **Jetons** | Ce que voit l'analyseur lexical, jeton par jeton. |
 
-Le bouton **Ouvrir un dossier** liste tous les fichiers `.lua` d'un dossier et de ses sous-dossiers ; **Vérifier tous les fichiers** contrôle leur syntaxe en parallèle et marque ceux qui contiennent une erreur. Les fichiers qui ne sont pas en UTF-8 sont lus en Latin-1, octet pour octet. **Exporter** enregistre l'arbre ou les jetons en JSON : la fenêtre « Enregistrer sous » du système demande le nom et le dossier. Les navigateurs qui n'offrent pas cette fenêtre aux pages web (Firefox, par exemple) laissent choisir le nom, et rangent le fichier dans leur dossier de téléchargements.
+Le bouton **Ouvrir un dossier** liste tous les fichiers `.lua` d'un dossier et de ses sous-dossiers ; **Vérifier tous les fichiers** contrôle leur syntaxe en parallèle et marque ceux qui contiennent une erreur. Les fichiers qui ne sont pas en UTF-8 sont lus en Latin-1, octet pour octet. **Exporter** enregistre l'arbre ou les jetons en JSON, ou les organigrammes des décisions dans une page HTML autonome (voir plus bas) : la fenêtre « Enregistrer sous » du système demande le nom et le dossier. Les navigateurs qui n'offrent pas cette fenêtre aux pages web (Firefox, par exemple) laissent choisir le nom, et rangent le fichier dans leur dossier de téléchargements.
 
 ### Lire le diagramme des décisions
 
@@ -47,6 +47,33 @@ Un clic sur une forme montre le code correspondant ; placer le curseur dans le c
 Pour une longue fonction, **Niveaux** replie le diagramme. Au niveau 1, seules les étapes principales sont dessinées : le contenu de chaque test et de chaque boucle tient dans un cadre en pointillés, par exemple « + 10 étapes, 3 tests ». Les niveaux 2 et 3 ouvrent un et deux étages de plus, **Tous** dessine tout. Un clic sur un cadre en pointillés le déplie ; un double-clic sur un test ou une boucle replie, ou déplie, ce qui en dépend. Un contenu d'une seule étape reste toujours dessiné.
 
 La **complexité** affichée vaut 1, plus 1 par `if` ou `elseif`, par boucle, et par `and` ou `or` écrit dans une condition : c'est le nombre de chemins à essayer pour tester la fonction. Les fonctions imbriquées sont comptées à part. « Ce que lisent les conditions » liste les noms dont dépendent les décisions de la fonction.
+
+### Exporter les organigrammes en HTML
+
+**Exporter › Organigrammes des décisions en HTML…** enregistre une seule page, `script.decisions.html`, qui se lit sans le Studio : on l'ouvre d'un double-clic dans n'importe quel navigateur récent, on l'envoie par courriel, on la dépose sur un partage. Elle contient tout ce qu'il lui faut (données, scripts, styles, polices), ne charge rien et n'envoie rien sur Internet. La même page s'obtient en ligne de commande :
+
+```console
+python -m lua_parser_pro mon_script.lua --html > mon_script.decisions.html
+```
+
+On y trouve, pour le script et chacune de ses fonctions :
+
+- à gauche, la liste des fonctions, imbriquées comme dans le texte, avec leur complexité ; un filtre cherche dans les noms et les descriptions, et on peut les ranger des plus complexes aux plus simples ;
+- l'**organigramme** des décisions, dessiné comme dans le Studio (niveaux, replis, zoom, glisser), ou le même contenu en **arbre** : une liste indentée « si … alors / sinon, si … / sinon », « pour … », « tant que … », plus facile à parcourir ou à chercher avec `Ctrl+F` ;
+- le **code** de la fonction, coloré ; un clic sur une forme de l'organigramme ou une ligne de l'arbre y marque les lignes correspondantes ;
+- les fonctions du script qu'elle **appelle** et celles qui l'**appellent**, en liens : un clic mène à leur organigramme, et le bouton Précédent du navigateur ramène à la fonction d'avant (chaque fonction a sa propre adresse, `page.html#fonction-12`) ;
+- des **infobulles** partout : sur une fonction (dans la liste ou dans un lien), elles donnent sa **description**, ses paramètres, sa complexité, ce que lisent ses conditions et ce qu'elle appelle ; sur une forme de l'organigramme, elles citent le code de l'étape et décrivent les fonctions du script qui y sont appelées.
+
+La description d'une fonction est le **commentaire écrit juste au-dessus d'elle**, sans ligne vide entre les deux. Les trois tirets de LDoc et d'EmmyLua (`---`) sont acceptés, de même que les balises `@param nom texte`, `@tparam type nom texte` et `@return texte` ; les filets (`-----`) et le code mis en commentaire sont ignorés. Le commentaire du début du fichier décrit le script lui-même. Sans commentaire, l'infobulle résume ce que l'analyse lit dans le code :
+
+```lua
+--- Vrai si la valeur figure dans la liste ; une liste absente compte pour vide.
+-- @param liste les éléments à parcourir, ou nil
+-- @param valeur l'élément cherché
+local function contient(liste, valeur)
+```
+
+Les appels sont reconnus par leur nom, tel qu'il est écrit : `contient(...)`, `Module.f(...)`, `objet:Methode(...)` (ce dernier quand une seule méthode du script porte ce nom). Rien n'est exécuté ni résolu : un appel à travers une variable intermédiaire n'est pas relié. La page **contient le code du script** : ne la partagez que là où ce code peut l'être.
 
 ### Raccourcis
 
@@ -96,6 +123,7 @@ python -m lua_parser_pro programme.lua --tokens         # jetons et commentaires
 python -m lua_parser_pro programme.lua --outline        # fonctions, tables, variables
 python -m lua_parser_pro programme.lua --stats          # mesures
 python -m lua_parser_pro programme.lua --check          # syntaxe seulement
+python -m lua_parser_pro programme.lua --html > page.html  # organigrammes des décisions
 python -m lua_parser_pro dossier --check                # tous les .lua d'un dossier
 python -m lua_parser_pro ancien.lua --check --encoding auto
 python -m lua_parser_pro - --check                      # entrée standard
@@ -108,6 +136,7 @@ python -m lua_parser_pro --gui [fichier ou dossier]     # le Studio
 | `--tokens` | Écrit un objet JSON contenant `tokens` et `comments`. |
 | `--outline` | Écrit la liste des déclarations (voir `outline` plus bas). |
 | `--stats` | Écrit les mesures du script (voir `statistics`). |
+| `--html` | Écrit une page HTML autonome : les organigrammes des décisions de toutes les fonctions, leur code et leurs descriptions (voir « Exporter les organigrammes en HTML »). La page ne contient que des caractères ASCII : une redirection `>` ne peut pas l'abîmer, quel que soit l'encodage de la console. |
 | `--gui`, `--studio` | Ouvre le Studio. `--port` choisit le port, `--no-browser` n'ouvre pas le navigateur. |
 | `--compact` | JSON sur une seule ligne. |
 | `--no-comments` | Ne collecte pas les commentaires. |
@@ -189,6 +218,16 @@ decision_flow(fonction, source)              # la structure de contrôle, en don
 
 `outline` donne à chaque déclaration un genre : `function`, `method`, `callback` (fonction anonyme passée à un appel, nommée d'après la fonction appelée), `table` ou `variable`. `function_metrics`, `condition_terms` et `decision_flow` reçoivent un nœud `FunctionExpression` ou le `Chunk` entier ; les fonctions imbriquées n'y sont pas comptées. `decision_flow` renvoie une `sequence` d'étapes : `action`, `if` (avec `branches` et `otherwise`), `while`, `repeat`, `for`, `return`, `break`, `goto`, `label`, `error`. Tous ces parcours sont itératifs et rien n'est exécuté ni résolu : ce sont des lectures du texte.
 
+La page HTML des organigrammes se construit aussi depuis Python :
+
+```python
+from pathlib import Path
+from lua_parser_pro.studio.report import build_report
+
+page = build_report(source, "combat.lua")   # lève LuaSyntaxError si le texte n'est pas du Lua valide
+Path("combat.decisions.html").write_text(page, encoding="ascii")
+```
+
 ### Fichiers et dossiers
 
 ```python
@@ -239,7 +278,7 @@ Il s'agit d'un **parseur, pas d'un compilateur ou d'une machine virtuelle**. Il 
 
 ## Vérifications
 
-La suite livrée compte 158 tests (`python -m unittest discover -s test`) : lexique, syntaxe, ligne de commande, analyses, lecture de dossiers, serveur du Studio et ce qu'il refuse.
+La suite livrée compte 175 tests (`python -m unittest discover -s test`) : lexique, syntaxe, ligne de commande, analyses, lecture de dossiers, serveur du Studio et ce qu'il refuse, export HTML des décisions.
 
 Pendant le développement, le parseur a aussi été comparé au vrai Lua 5.4 (par le module `lupa`, qui n'est pas nécessaire à l'usage) :
 
@@ -261,7 +300,8 @@ lua_parser_pro/
   analysis.py    Plan, mesures, complexité, mécanique des décisions
   batch.py       Lecture des fichiers, vérification d'un dossier
   cli.py         Interface en ligne de commande
-  studio/        Le Studio : serveur local, messages en français, page et scripts
+  studio/        Le Studio : serveur local, messages en français, page et scripts,
+                 export HTML des organigrammes (report.py, static/rapport.*)
 examples/        Exemples Lua et Python
 test/            Tests de régression
 LANCER_STUDIO.bat   Lance le Studio sous Windows
